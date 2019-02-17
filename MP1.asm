@@ -3,8 +3,12 @@ section .data
 
 REFERENCE times 20 db 0
 READSTR times 20 db 0
-READTMP times 20 db 0
 POSITION times 20 db 0
+TEMP times 20 db 0
+COUNT db 0x00
+READLEN db 0x00
+POSADD dw 0x00000000
+POSLOC db 0x00
 
 section .text
 global CMAIN
@@ -14,30 +18,16 @@ CMAIN:
     GET_STRING [REFERENCE], 20
     GET_STRING [READSTR], 20
     
-    MOV EAX, [READSTR]
-    MOV [READTMP], EAX
-    MOV EAX, 0x00
-    
-    
     LEA ESI, [REFERENCE];POINTERS FOR TRAVERSING THE STRINGS
     LEA EDX, [READSTR]
     
-    MOV BL, 1; FOR COUNTUNG LENGTH OF REFERENCE 
-    MOV AL, 0; FOR COUNTING LENGTH OF READSTR
+    LEA EDI, [POSITION]
+    MOV dword[POSADD], EDI
     
-    COUNTREF:;COUNT LENGTH OF REFERENCE
-            CMP byte[ESI], 0x00
-            JE COUNTFINISH
-            INC BL
-            INC ESI
-            JMP COUNTREF
+    MOV AL, 0; FOR COUNTING LENGTH OF READSTR
             
-    COUNTFINISH: 
-            SUB BL, 2;STRING LENTH HAS TO SUBRTACT 2 TO BECOME MORE ACCURATE
-            LEA ESI, [REFERENCE];RESETS POINTER
-            
-    COUNTREAD:
-            CMP byte[EDX], 0x00;COUNTING LENGTH OF READ
+    COUNTREAD:;COUNTING OF LENGTH OF READ
+            CMP byte[EDX], 0x00
             JE COUNTFINR
             INC AL
             INC EDX
@@ -45,60 +35,79 @@ CMAIN:
             
     COUNTFINR:
             LEA EDX, [READSTR]
+            LEA EDI, [TEMP]
             
-    ADD EDX, EAX
-    LEA ECX, [READTMP]
+    MOV ECX, EAX
+    MOV byte[READLEN], CL
+    MOV byte[POSLOC], 0x00
+    PRINT_STRING "POSITION:"
+    JMP FIRSTSET
     
-    EQUALIZE:; TO MAKE REFERENCE AND READSTR EQUAL
-            CMP AL, BL
-            JE EQUALIZERFIN
-            MOV BH, [ECX]
-            MOV byte[EDX], BH
+   
+    NEXTSET:
+        INC byte[POSLOC]
+        FIRSTSET:
+        MOV EAX, 0
+        L1:; PUT 4 CHARACTERS TO TEMP
+            CMP byte[ESI+EAX], 0x00
+            JE OUTPUT
+            MOV BH, byte[ESI + EAX]
+            MOV [EDI], BH
+            INC EAX
+            INC EDI
+            LOOP L1
+            
+    LEA EDI, [TEMP]; TO RESET TEMP
+    MOV AH, 0; TO CHECK FOR HAMMING DISTANCE
+    ;EDX = READSTR
+    
+   
+    
+    CHECK:
+            CMP byte[EDI], 0x00
+            JE FOUNDPOS
+            MOV BL, byte[EDI]
+            CMP byte[EDX], BL
+            JNE NOTEQUAL
             INC EDX
-            INC AL
-            INC ECX
-            CMP byte[ECX], 0x00
-            JE RESET
-            JMP EQUALIZE
-    
-    RESET:
-            LEA ECX, [READTMP]
-            JMP EQUALIZE
+            INC EDI
+            JMP CHECK
             
+    NOTEQUAL:
+            INC AH
+            CMP AH, 0x02
+            JG DNF
+            INC EDX
+            INC EDI
+            JMP CHECK
             
-    EQUALIZERFIN:
-            LEA ESI, [REFERENCE]
+    DNF:
+            LEA EDI, [TEMP]
             LEA EDX, [READSTR]
-            MOV EAX, 0
-            MOV BL, 0;AMOUNT OF MISMATCH
-    
-    CHECK:;CHECKS IF MISMATCH OR NOT
-            MOV AL, byte[EDX]
-            CMP byte[ESI], AL
-            JE CHARSAME
-            JMP NOTSAMEONCE
-            
-    CHARSAME:
+            MOV cl, byte[READLEN] 
             INC ESI
-            INC EDX
-            JMP CHECK
-            PRINT_STRING "HELLO WORLD"
+            JMP NEXTSET
             
-    NOTSAMEONCE:;WHEN MISMATCH IS = 1 DO THIS
-            INC BL
-            CMP BL, 0x02
-            JE NOTSAMETWICE
+            
+    FOUNDPOS: 
+            ;PRINT_STRING "WOAH I MADE IT"
+            INC byte[COUNT]
+            PRINT_UDEC 1, [POSLOC]
+            PRINT_CHAR ','
+            LEA EDI, [TEMP]
+            LEA EDX, [READSTR]
+            MOV CL, byte[READLEN]
             INC ESI
-            INC EDX
-            JMP CHECK
-            
-    NOTSAMETWICE:; WHEN MISMATCH IS = 2 DO THIS
-            
+            JMP NEXTSET
     
+         
+    OUTPUT:
+            NEWLINE
+            PRINT_STRING "COUNT: "
+            PRINT_UDEC 1, [COUNT]
             
-    
             
-    
+            
     
             
     
